@@ -106,18 +106,15 @@ static int _DecoderThread(void *ptr) {
 
                 // Run decoders for a bit
                 for(int i = 0; i < KIT_DEC_COUNT; i++) {
-                    Kit_Decoder *dec = player->decoders[i];
-                    if(dec == NULL)
-                        continue;
-                    while(Kit_RunDecoder(dec) == 1);
+                    while(Kit_RunDecoder(player->decoders[i]) == 1);
                 }
+
+                // Wait until we get signalled about needing more data
+                SDL_CondWaitTimeout(player->dec_cond, player->dec_lock, 100);
 
                 // Free decoder thread lock.
                 SDL_UnlockMutex(player->dec_lock);
             }
-
-            // We decoded as much as we could, sleep a bit.
-            SDL_Delay(1);
         }
 
         // Just idle while waiting for work.
@@ -176,16 +173,25 @@ Kit_Player* Kit_CreatePlayer(const Kit_Source *src,
         goto exit_2;
     }
 
+    // Output buffer write condition
+    player->dec_cond = SDL_CreateCond();
+    if(player->dec_cond == NULL) {
+        Kit_SetError("Unable to create a decoder thread condition: %s", SDL_GetError());
+        goto exit_3;
+    }
+
     // Decoder thread
     player->dec_thread = SDL_CreateThread(_DecoderThread, "Kit Decoder Thread", player);
     if(player->dec_thread == NULL) {
         Kit_SetError("Unable to create a decoder thread: %s", SDL_GetError());
-        goto exit_3;
+        goto exit_4;
     }
 
     player->src = src;
     return player;
 
+exit_4:
+    SDL_DestroyCond(player->dec_cond);
 exit_3:
     SDL_DestroyMutex(player->dec_lock);
 exit_2:
@@ -201,10 +207,17 @@ exit_0:
 void Kit_ClosePlayer(Kit_Player *player) {
     if(player == NULL) return;
 
+    // Tell the thread to get on with it
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        SDL_CondBroadcast(player->dec_cond);
+        SDL_UnlockMutex(player->dec_lock);
+    }
+
     // Kill the decoder thread and mutex
     player->state = KIT_CLOSED;
     SDL_WaitThread(player->dec_thread, NULL);
     SDL_DestroyMutex(player->dec_lock);
+    SDL_DestroyCond(player->dec_cond);
 
     // Shutdown decoders
     for(int i = 0; i < KIT_DEC_COUNT; i++) {
@@ -254,7 +267,13 @@ int Kit_GetPlayerVideoData(Kit_Player *player, SDL_Texture *texture) {
         return 0;
     }
 
-    return Kit_GetVideoDecoderData(dec, texture);
+    int ret;
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        ret = Kit_GetVideoDecoderData(dec, texture);
+        SDL_CondBroadcast(player->dec_cond);
+        SDL_UnlockMutex(player->dec_lock);
+    }
+    return ret;
 }
 
 int Kit_GetPlayerAudioData(Kit_Player *player, unsigned char *buffer, int length) {
@@ -279,7 +298,13 @@ int Kit_GetPlayerAudioData(Kit_Player *player, unsigned char *buffer, int length
         return 0;
     }
 
-    return Kit_GetAudioDecoderData(dec, buffer, length);
+    int ret;
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        ret = Kit_GetAudioDecoderData(dec, buffer, length);
+        SDL_CondBroadcast(player->dec_cond);
+        SDL_UnlockMutex(player->dec_lock);
+    }
+    return ret;
 }
 
 int Kit_GetPlayerSubtitleData(Kit_Player *player, SDL_Texture *texture, SDL_Rect *sources, SDL_Rect *targets, int limit) {
@@ -302,7 +327,13 @@ int Kit_GetPlayerSubtitleData(Kit_Player *player, SDL_Texture *texture, SDL_Rect
         return 0;
     }
 
-    return Kit_GetSubtitleDecoderData(dec, texture, sources, targets, limit);
+    int ret;
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        ret = Kit_GetSubtitleDecoderData(dec, texture, sources, targets, limit);
+        SDL_CondBroadcast(player->dec_cond);
+        SDL_UnlockMutex(player->dec_lock);
+    }
+    return ret;
 }
 
 void Kit_GetPlayerInfo(const Kit_Player *player, Kit_PlayerInfo *info) {
@@ -319,21 +350,15 @@ void Kit_GetPlayerInfo(const Kit_Player *player, Kit_PlayerInfo *info) {
 }
 
 static void _SetClockSync(Kit_Player *player) {
-    if(SDL_LockMutex(player->dec_lock) == 0) {
-        double sync = _GetSystemTime();
-        for(int i = 0; i < KIT_DEC_COUNT; i++) {
-            Kit_SetDecoderClockSync(player->decoders[i], sync);
-        }
-        SDL_UnlockMutex(player->dec_lock);
+    double sync = _GetSystemTime();
+    for(int i = 0; i < KIT_DEC_COUNT; i++) {
+        Kit_SetDecoderClockSync(player->decoders[i], sync);
     }
 }
 
 static void _ChangeClockSync(Kit_Player *player, double delta) {
-    if(SDL_LockMutex(player->dec_lock) == 0) {
-        for(int i = 0; i < KIT_DEC_COUNT; i++) {
-            Kit_ChangeDecoderClockSync(player->decoders[i], delta);
-        }
-        SDL_UnlockMutex(player->dec_lock);
+    for(int i = 0; i < KIT_DEC_COUNT; i++) {
+        Kit_ChangeDecoderClockSync(player->decoders[i], delta);
     }
 }
 
@@ -345,39 +370,51 @@ Kit_PlayerState Kit_GetPlayerState(const Kit_Player *player) {
 void Kit_PlayerPlay(Kit_Player *player) {
     assert(player != NULL);
     double tmp;
-    switch(player->state) {
-        case KIT_PLAYING:
-        case KIT_CLOSED:
-            break;
-        case KIT_PAUSED:
-            tmp = _GetSystemTime() - player->pause_started;
-            _ChangeClockSync(player, tmp);
-            player->state = KIT_PLAYING;
-            break;
-        case KIT_STOPPED:
-            _SetClockSync(player);
-            player->state = KIT_PLAYING;
-            break;
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        switch(player->state) {
+            case KIT_PLAYING:
+            case KIT_CLOSED:
+                break;
+            case KIT_PAUSED:
+                tmp = _GetSystemTime() - player->pause_started;
+                _ChangeClockSync(player, tmp);
+                player->state = KIT_PLAYING;
+                SDL_CondBroadcast(player->dec_cond);
+                break;
+            case KIT_STOPPED:
+                _SetClockSync(player);
+                player->state = KIT_PLAYING;
+                SDL_CondBroadcast(player->dec_cond);
+                break;
+        }
+        SDL_UnlockMutex(player->dec_lock);
     }
 }
 
 void Kit_PlayerStop(Kit_Player *player) {
     assert(player != NULL);
-    switch(player->state) {
-        case KIT_STOPPED:
-        case KIT_CLOSED:
-            break;
-        case KIT_PLAYING:
-        case KIT_PAUSED:
-            player->state = KIT_STOPPED;
-            break;
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        switch(player->state) {
+            case KIT_STOPPED:
+            case KIT_CLOSED:
+                break;
+            case KIT_PLAYING:
+            case KIT_PAUSED:
+                SDL_CondBroadcast(player->dec_cond);
+                player->state = KIT_STOPPED;
+                break;
+        }
+        SDL_UnlockMutex(player->dec_lock);
     }
 }
 
 void Kit_PlayerPause(Kit_Player *player) {
     assert(player != NULL);
-    player->state = KIT_PAUSED;
-    player->pause_started = _GetSystemTime();
+    if(SDL_LockMutex(player->dec_lock) == 0) {
+        player->state = KIT_PAUSED;
+        player->pause_started = _GetSystemTime();
+        SDL_UnlockMutex(player->dec_lock);
+    }
 }
 
 int Kit_PlayerSeek(Kit_Player *player, double seek_set) {

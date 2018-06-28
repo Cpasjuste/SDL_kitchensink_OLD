@@ -48,13 +48,10 @@ static void ren_render_ass_cb(Kit_SubtitleRenderer *ren, void *src, double start
     AVSubtitle *sub = src;
 
     // Read incoming subtitle packets to libASS
-    if(Kit_LockDecoderOutput(ren->dec) == 0) {
-        for(int r = 0; r < sub->num_rects; r++) {
-            if(sub->rects[r]->ass == NULL)
-                continue;
-            ass_process_data(ass_ren->track, sub->rects[r]->ass, strlen(sub->rects[r]->ass));
-        }
-        Kit_UnlockDecoderOutput(ren->dec);
+    for(int r = 0; r < sub->num_rects; r++) {
+        if(sub->rects[r]->ass == NULL)
+            continue;
+        ass_process_data(ass_ren->track, sub->rects[r]->ass, strlen(sub->rects[r]->ass));
     }
 }
 
@@ -74,33 +71,28 @@ static int ren_get_ass_data_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atla
     int change = 0;
     unsigned int now = current_pts * 1000;
 
-    if(Kit_LockDecoderOutput(ren->dec) == 0) {
-        // Tell ASS to render some images
-        src = ass_render_frame(ass_ren->renderer, ass_ren->track, now, &change);
+    // Tell ASS to render some images
+    src = ass_render_frame(ass_ren->renderer, ass_ren->track, now, &change);
 
-        // If there was no change, stop here
-        if(change == 0) {
-            Kit_UnlockDecoderOutput(ren->dec);
-            return 0;
-        }
+    // If there was no change, stop here
+    if(change == 0) {
+        return 0;
+    }
 
-        // There was some change, process images and add them to atlas
-        Kit_ClearAtlasContent(atlas);
-        for(; src; src = src->next) {
-            if(src->w == 0 || src->h == 0)
-                continue;
-            dst = SDL_CreateRGBSurfaceWithFormat(0, src->w, src->h, 32, SDL_PIXELFORMAT_RGBA32);
-            Kit_ProcessAssImage(dst, src);
-            SDL_Rect target;
-            target.x = src->dst_x;
-            target.y = src->dst_y;
-            target.w = dst->w;
-            target.h = dst->h;
-            Kit_AddAtlasItem(atlas, dst, &target);
-            SDL_FreeSurface(dst);
-        }
-
-        Kit_UnlockDecoderOutput(ren->dec);
+    // There was some change, process images and add them to atlas
+    Kit_ClearAtlasContent(atlas);
+    for(; src; src = src->next) {
+        if(src->w == 0 || src->h == 0)
+            continue;
+        dst = SDL_CreateRGBSurfaceWithFormat(0, src->w, src->h, 32, SDL_PIXELFORMAT_RGBA32);
+        Kit_ProcessAssImage(dst, src);
+        SDL_Rect target;
+        target.x = src->dst_x;
+        target.y = src->dst_y;
+        target.w = dst->w;
+        target.h = dst->h;
+        Kit_AddAtlasItem(atlas, dst, &target);
+        SDL_FreeSurface(dst);
     }
 
     ren->dec->clock_pos = current_pts;

@@ -69,18 +69,6 @@ void Kit_AdvanceBuffer(Kit_Buffer *buffer) {
     }
 }
 
-void Kit_ForEachItemInBuffer(const Kit_Buffer *buffer, Kit_ForEachItemCallback cb, void *userdata) {
-    unsigned int read_p = buffer->read_p;
-    unsigned int write_p = buffer->write_p;
-    while(read_p < write_p) {
-        cb(buffer->data[read_p++ % buffer->size], userdata);
-        if(read_p >= buffer->size) {
-            read_p = read_p % buffer->size;
-            write_p = write_p % buffer->size;
-        }
-    }
-}
-
 int Kit_WriteBuffer(Kit_Buffer *buffer, void *ptr) {
     assert(buffer != NULL);
     assert(ptr != NULL);

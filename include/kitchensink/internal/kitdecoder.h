@@ -13,8 +13,11 @@
 #include "kitchensink/kitsource.h"
 #include "kitchensink/internal/utils/kitbuffer.h"
 
-#define KIT_DEC_IN 0
-#define KIT_DEC_OUT 1
+enum {
+    KIT_DEC_BUF_IN = 0,
+    KIT_DEC_BUF_OUT,
+    KIT_DEC_BUF_COUNT
+};
 
 typedef struct Kit_Decoder Kit_Decoder;
 
@@ -31,7 +34,6 @@ KIT_LOCAL struct Kit_Decoder {
     AVCodecContext *codec_ctx;   ///< FFMpeg internal: Codec context
     AVFormatContext *format_ctx; ///< FFMpeg internal: Format context (owner: Kit_Source)
 
-    SDL_mutex *lock[2];          ///< Threading locks for input and output buffers
     Kit_Buffer *buffer[2];       ///< Buffers for incoming and decoded packets
 
     void *userdata;              ///< Decoder specific information (Audio, video, subtitle context)
@@ -63,9 +65,6 @@ KIT_LOCAL int Kit_WriteDecoderOutput(Kit_Decoder *dec, void *packet);
 KIT_LOCAL void* Kit_PeekDecoderOutput(Kit_Decoder *dec);
 KIT_LOCAL void* Kit_ReadDecoderOutput(Kit_Decoder *dec);
 KIT_LOCAL void Kit_AdvanceDecoderOutput(Kit_Decoder *dec);
-KIT_LOCAL void Kit_ForEachDecoderOutput(Kit_Decoder *dec, Kit_ForEachItemCallback foreach_cb, void *userdata);
-KIT_LOCAL int Kit_LockDecoderOutput(Kit_Decoder *dec);
-KIT_LOCAL void Kit_UnlockDecoderOutput(Kit_Decoder *dec);
 KIT_LOCAL void Kit_ClearDecoderOutput(Kit_Decoder *dec);
 
 

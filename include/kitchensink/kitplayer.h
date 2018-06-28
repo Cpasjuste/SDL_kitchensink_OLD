@@ -38,6 +38,7 @@ typedef struct Kit_Player {
     void *decoders[3];       ///< Decoder contexts
     void *dec_thread;        ///< Decoder thread
     void *dec_lock;          ///< Decoder lock
+    void *dec_cond;          ///< Decoder condition
     const Kit_Source *src;   ///< Reference to Audio/Video source
     double pause_started;    ///< Temporary flag for handling pauses
 } Kit_Player;
