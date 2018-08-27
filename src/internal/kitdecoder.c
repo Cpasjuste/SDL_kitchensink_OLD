@@ -27,7 +27,7 @@ Kit_Decoder* Kit_CreateDecoder(const Kit_Source *src, int stream_index,
 
     // Make sure index seems correct
     if(stream_index >= (int)format_ctx->nb_streams || stream_index < 0) {
-        Kit_SetError("Invalid stream %d", stream_index);
+        Kit_SetError("Stream id out of bounds for %d", stream_index);
         goto exit_0;
     }
     
@@ -103,6 +103,69 @@ exit_1:
     free(dec);
 exit_0:
     return NULL;
+}
+
+int Kit_ReInitDecoder(Kit_Decoder *dec, int stream_index) {
+    AVCodecContext *codec_ctx = NULL;
+    AVCodec *codec = NULL;
+    AVFormatContext *format_ctx = dec->format_ctx;
+    enum AVMediaType old_type;
+    enum AVMediaType new_type;
+    
+    // Make sure index seems correct
+    if(stream_index >= (int)format_ctx->nb_streams || stream_index < 0) {
+        Kit_SetError("Stream id out of bounds for %d", stream_index);
+        goto exit_0;
+    }
+
+    // New stream type must be the same as the old one
+    // We don't want to end up with eg. two audio streams :)
+    old_type = format_ctx->streams[dec->stream_index]->codec->codec_type;
+    new_type = format_ctx->streams[stream_index]->codec->codec_type;
+    if(new_type != old_type) {
+        Kit_SetError("Invalid stream type for stream %d", stream_index);
+        goto exit_0;
+    }
+
+    // Find audio decoder
+    codec = avcodec_find_decoder(format_ctx->streams[stream_index]->codec->codec_id);
+    if(!codec) {
+        Kit_SetError("No suitable decoder found for stream %d", stream_index);
+        goto exit_0;
+    }
+
+    // Allocate a context for the codec
+    codec_ctx = avcodec_alloc_context3(codec);
+    if(codec_ctx == NULL) {
+        Kit_SetError("Unable to allocate codec context for stream %d", stream_index);
+        goto exit_0;
+    }
+
+    // Copy context from stream to target codec context
+    if(avcodec_copy_context(codec_ctx, format_ctx->streams[stream_index]->codec) != 0) {
+        Kit_SetError("Unable to copy codec context for stream %d", stream_index);
+        goto exit_1;
+    }
+
+    // Open the stream
+    if(avcodec_open2(codec_ctx, codec, NULL) < 0) {
+        Kit_SetError("Unable to open codec for stream %d", stream_index);
+        goto exit_1;
+    }
+
+    // Close current decoder since we have a good new decoder
+    avcodec_close(dec->codec_ctx);
+    avcodec_free_context(&dec->codec_ctx);
+
+    // Set index and codec
+    dec->stream_index = stream_index;
+    dec->codec_ctx = codec_ctx;
+    return 0;
+
+exit_1:
+    avcodec_free_context(&codec_ctx);
+exit_0:
+    return 1;
 }
 
 void Kit_CloseDecoder(Kit_Decoder *dec) {

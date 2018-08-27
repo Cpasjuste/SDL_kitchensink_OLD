@@ -166,6 +166,18 @@ void Kit_CloseSource(Kit_Source *src) {
     free(src);
 }
 
+static Kit_StreamType _GetKitStreamType(const enum AVMediaType type) {
+    switch(type) {
+        case AVMEDIA_TYPE_DATA: return KIT_STREAMTYPE_DATA;
+        case AVMEDIA_TYPE_VIDEO: return KIT_STREAMTYPE_VIDEO;
+        case AVMEDIA_TYPE_AUDIO: return KIT_STREAMTYPE_AUDIO;
+        case AVMEDIA_TYPE_SUBTITLE: return KIT_STREAMTYPE_SUBTITLE;
+        case AVMEDIA_TYPE_ATTACHMENT: return KIT_STREAMTYPE_ATTACHMENT;
+        default:
+            return KIT_STREAMTYPE_UNKNOWN;
+    }
+}
+
 int Kit_GetSourceStreamInfo(const Kit_Source *src, Kit_SourceStreamInfo *info, int index) {
     assert(src != NULL);
     assert(info != NULL);
@@ -175,22 +187,24 @@ int Kit_GetSourceStreamInfo(const Kit_Source *src, Kit_SourceStreamInfo *info, i
         Kit_SetError("Invalid stream index");
         return 1;
     }
-
-    AVStream *stream = format_ctx->streams[index];
-    switch(stream->codec->codec_type) {
-        case AVMEDIA_TYPE_UNKNOWN: info->type = KIT_STREAMTYPE_UNKNOWN; break;
-        case AVMEDIA_TYPE_DATA: info->type = KIT_STREAMTYPE_DATA; break;
-        case AVMEDIA_TYPE_VIDEO: info->type = KIT_STREAMTYPE_VIDEO; break;
-        case AVMEDIA_TYPE_AUDIO: info->type = KIT_STREAMTYPE_AUDIO; break;
-        case AVMEDIA_TYPE_SUBTITLE: info->type = KIT_STREAMTYPE_SUBTITLE; break;
-        case AVMEDIA_TYPE_ATTACHMENT: info->type = KIT_STREAMTYPE_ATTACHMENT; break;
-        default:
-            Kit_SetError("Unknown native stream type");
-            return 1;
-    }
-
+    info->type = _GetKitStreamType(format_ctx->streams[index]->codec->codec_type);
     info->index = index;
     return 0;
+}
+
+int Kit_GetSourceStreamList(const Kit_Source *src, const Kit_StreamType type, int *list, int size) {
+    int p = 0;
+    AVFormatContext *format_ctx = (AVFormatContext *)src->format_ctx;
+
+    for(int n = 0; n < Kit_GetSourceStreamCount(src); n++) {
+        if(_GetKitStreamType(format_ctx->streams[n]->codec->codec_type) == type) {
+            if(p >= size) {
+                return p;
+            }
+            list[p++] = n;
+        }
+    }
+    return p;
 }
 
 int Kit_GetBestSourceStream(const Kit_Source *src, const Kit_StreamType type) {
