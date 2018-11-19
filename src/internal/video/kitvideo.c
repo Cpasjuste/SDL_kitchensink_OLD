@@ -17,8 +17,8 @@
 #if __PPLAY__
 enum AVPixelFormat supported_list[] = {
         AV_PIX_FMT_RGB565,
-        AV_PIX_FMT_BGRA,
-        AV_PIX_FMT_RGBA,
+        //AV_PIX_FMT_BGRA,
+        //AV_PIX_FMT_RGBA,
         AV_PIX_FMT_NONE
 };
 #else
@@ -60,6 +60,8 @@ static Kit_VideoPacket* _CreateVideoPacket(AVFrame *frame, double pts) {
 
 static unsigned int _FindSDLPixelFormat(enum AVPixelFormat fmt) {
     switch(fmt) {
+        case AV_PIX_FMT_RGB565:
+            return SDL_PIXELFORMAT_RGB565;
         case AV_PIX_FMT_YUV420P:
             return SDL_PIXELFORMAT_YV12;
         case AV_PIX_FMT_YUYV422:
