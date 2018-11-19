@@ -184,6 +184,8 @@ KIT_API int Kit_GetPlayerSubtitleStream(const Kit_Player *player);
  */
 KIT_API int Kit_GetPlayerVideoData(Kit_Player *player, SDL_Texture *texture);
 
+KIT_API int Kit_GetPlayerVideoDataRaw(Kit_Player *player, void *data);
+
 /**
  * @brief Fetches subtitle data from the player
  * 
@@ -315,6 +317,28 @@ KIT_API void Kit_PlayerPause(Kit_Player *player);
  * @return 0 on success, 1 on failure.
  */
 KIT_API int Kit_PlayerSeek(Kit_Player *player, double time);
+
+/**
+ * @brief Selects stream index for specified stream type.
+ *
+ * This allows switching streams during or outside playback. Handy for eg.
+ * switching subtitle track.
+ *
+ * @param player Player instance
+ * @param type Stream to switch
+ * @param index Index to use (list can be queried from the source)
+ * @return 0 on success, 1 on failure.
+ */
+
+KIT_API int Kit_SetPlayerStream(Kit_Player *player, const Kit_StreamType type, int index);
+/**
+* @brief Returns the current index of the specified stream type
+*
+* @param player Player instance
+* @param type Stream to switch
+* @return Stream index or -1 on error or if stream is not set
+*/
+KIT_API int Kit_GetPlayerStream(const Kit_Player *player, const Kit_StreamType type);
 
 /**
  * @brief Get the duration of the source

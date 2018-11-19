@@ -14,6 +14,14 @@
 
 #define KIT_VIDEO_SYNC_THRESHOLD 0.02
 
+#if __PPLAY__
+enum AVPixelFormat supported_list[] = {
+        AV_PIX_FMT_RGB565,
+        AV_PIX_FMT_BGRA,
+        AV_PIX_FMT_RGBA,
+        AV_PIX_FMT_NONE
+};
+#else
 enum AVPixelFormat supported_list[] = {
     AV_PIX_FMT_YUV420P,
     AV_PIX_FMT_YUYV422,
@@ -30,6 +38,7 @@ enum AVPixelFormat supported_list[] = {
     AV_PIX_FMT_RGBA,
     AV_PIX_FMT_NONE
 };
+#endif
 
 typedef struct Kit_VideoDecoder {
     struct SwsContext *sws;
@@ -366,4 +375,48 @@ int Kit_GetVideoDecoderData(Kit_Decoder *dec, SDL_Texture *texture) {
     free_out_video_packet_cb(packet);
 
     return 0;
+}
+
+int Kit_GetVideoDecoderDataRaw(Kit_Decoder *dec, void *data) {
+    assert(dec != NULL);
+    assert(data != NULL);
+
+    Kit_VideoPacket *packet = NULL;
+    double sync_ts = 0;
+    unsigned int limit_rounds = 0;
+
+    // First, peek the next packet. Make sure we have something to read.
+    packet = Kit_PeekDecoderOutput(dec);
+    if(packet == NULL) {
+        return 0;
+    }
+
+    // If packet should not yet be played, stop here and wait.
+    // If packet should have already been played, skip it and try to find a better packet.
+    // For video, we *try* to return a frame, even if we are out of sync. It is better than
+    // not showing anything.
+    sync_ts = _GetSystemTime() - dec->clock_sync;
+    if(packet->pts > sync_ts + KIT_VIDEO_SYNC_THRESHOLD) {
+        return 0;
+    }
+    limit_rounds = Kit_GetDecoderOutputLength(dec);
+    while(packet != NULL && packet->pts < sync_ts - KIT_VIDEO_SYNC_THRESHOLD && --limit_rounds) {
+        Kit_AdvanceDecoderOutput(dec);
+        free_out_video_packet_cb(packet);
+        packet = Kit_PeekDecoderOutput(dec);
+    }
+    if(packet == NULL) {
+        return 0;
+    }
+
+    // Update output data with current video data.
+    memcpy(data, packet->frame->data[0],
+           (size_t) (dec->codec_ctx->height * packet->frame->linesize[0]));
+
+    // Advance buffer, and free the decoded frame.
+    Kit_AdvanceDecoderOutput(dec);
+    dec->clock_pos = packet->pts;
+    free_out_video_packet_cb(packet);
+
+    return 1;
 }
