@@ -16,9 +16,9 @@
 
 #if __PPLAY__
 enum AVPixelFormat supported_list[] = {
-        AV_PIX_FMT_RGB565,
+        //AV_PIX_FMT_RGB565,
         //AV_PIX_FMT_BGRA,
-        //AV_PIX_FMT_RGBA,
+        AV_PIX_FMT_RGBA,
         AV_PIX_FMT_NONE
 };
 #else
