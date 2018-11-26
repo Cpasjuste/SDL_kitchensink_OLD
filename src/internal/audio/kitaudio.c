@@ -307,7 +307,11 @@ Kit_Decoder* Kit_CreateAudioDecoder(const Kit_Source *src, int stream_index) {
     // Set format configs
     Kit_OutputFormat output;
     memset(&output, 0, sizeof(Kit_OutputFormat));
+#ifdef __PPLAY__
+    output.samplerate = 48000;
+#else
     output.samplerate = dec->codec_ctx->sample_rate;
+#endif
     output.channels = _FindChannelLayout(dec->codec_ctx->channel_layout);
     output.bytes = _FindBytes(dec->codec_ctx->sample_fmt);
     output.is_signed = _FindSignedness(dec->codec_ctx->sample_fmt);
