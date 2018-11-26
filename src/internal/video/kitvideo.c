@@ -179,8 +179,13 @@ static void dec_read_video(Kit_Decoder *dec) {
             av_image_alloc(
                     out_frame->data,
                     out_frame->linesize,
+#ifdef __PPLAY__
+                    dec->output.width,
+                    dec->output.height,
+#else
                     dec->codec_ctx->width,
                     dec->codec_ctx->height,
+#endif
                     _FindAVPixelFormat(dec->output.format),
                     1);
 
@@ -280,6 +285,25 @@ Kit_Decoder* Kit_CreateVideoDecoder(const Kit_Source *src, int stream_index) {
     output.height = dec->codec_ctx->height;
     output.format = _FindSDLPixelFormat(output_format);
 
+#ifdef __PPLAY__
+#if 0
+    if(output.width > 1280) {
+        float ratio = (float) output.width / 1280.0f;
+        output.width = 1280;
+        output.height = (int)((float) output.height / ratio);
+    }
+#endif
+    // Create scaler for handling format changes
+    video_dec->sws = sws_getContext(
+            dec->codec_ctx->width, // Source w
+            dec->codec_ctx->height, // Source h
+            dec->codec_ctx->pix_fmt, // Source fmt
+            output.width, // Target w
+            output.height, // Target h
+            _FindAVPixelFormat(output.format), // Target fmt
+            SWS_BILINEAR,
+            NULL, NULL, NULL);
+#else
     // Create scaler for handling format changes
     video_dec->sws = sws_getContext(
         dec->codec_ctx->width, // Source w
@@ -290,6 +314,7 @@ Kit_Decoder* Kit_CreateVideoDecoder(const Kit_Source *src, int stream_index) {
         _FindAVPixelFormat(output.format), // Target fmt
         SWS_BILINEAR,
         NULL, NULL, NULL);
+#endif
     if(video_dec->sws == NULL) {
         Kit_SetError("Unable to initialize video converter context");
         goto exit_3;
@@ -413,7 +438,7 @@ int Kit_GetVideoDecoderDataRaw(Kit_Decoder *dec, void *data) {
 
     // Update output data with current video data.
     memcpy(data, packet->frame->data[0],
-           (size_t) (dec->codec_ctx->height * packet->frame->linesize[0]));
+           (size_t) (dec->output.height * packet->frame->linesize[0]));
 
     // Advance buffer, and free the decoded frame.
     Kit_AdvanceDecoderOutput(dec);
