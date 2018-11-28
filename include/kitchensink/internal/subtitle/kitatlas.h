@@ -36,5 +36,6 @@ KIT_LOCAL void Kit_ClearAtlasContent(Kit_TextureAtlas *atlas);
 KIT_LOCAL void Kit_CheckAtlasTextureSize(Kit_TextureAtlas *atlas, SDL_Texture *texture);
 KIT_LOCAL int Kit_GetAtlasItems(const Kit_TextureAtlas *atlas, SDL_Rect *sources, SDL_Rect *targets, int limit);
 KIT_LOCAL int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, SDL_Surface *surface, const SDL_Rect *target);
+KIT_LOCAL int Kit_AddAtlasItemRaw(Kit_TextureAtlas *atlas, void *data, SDL_Surface *surface, const SDL_Rect *target);
 
 #endif // KITATLAS_H

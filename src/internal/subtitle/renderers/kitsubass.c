@@ -124,6 +124,49 @@ static int ren_get_ass_data_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atla
     return 0;
 }
 
+static int ren_get_ass_data_raw_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atlas, void *data, double current_pts) {
+    Kit_ASSSubtitleRenderer *ass_ren = ren->userdata;
+    SDL_Surface *dst = NULL;
+    ASS_Image *src = NULL;
+    int change = 0;
+    long long now = current_pts * 1000;
+
+    if(Kit_LockDecoderOutput(ren->dec) == 0) {
+        // Tell ASS to render some images
+        src = ass_render_frame(ass_ren->renderer, ass_ren->track, now, &change);
+
+        // If there was no change, stop here
+        if(change == 0) {
+            Kit_UnlockDecoderOutput(ren->dec);
+            return 0;
+        }
+
+        // There was some change, process images and add them to atlas
+        Kit_ClearAtlasContent(atlas);
+        //Kit_CheckAtlasTextureSize(atlas, texture);
+        atlas->w = 1024;
+        atlas->h = 1024;
+        for(; src; src = src->next) {
+            if(src->w == 0 || src->h == 0)
+                continue;
+            dst = SDL_CreateRGBSurfaceWithFormat(0, src->w, src->h, 32, SDL_PIXELFORMAT_RGBA32);
+            Kit_ProcessAssImage(dst, src);
+            SDL_Rect target;
+            target.x = src->dst_x;
+            target.y = src->dst_y;
+            target.w = dst->w;
+            target.h = dst->h;
+            Kit_AddAtlasItemRaw(atlas, data, dst, &target);
+            SDL_FreeSurface(dst);
+        }
+
+        Kit_UnlockDecoderOutput(ren->dec);
+    }
+
+    ren->dec->clock_pos = current_pts;
+    return 0;
+}
+
 static void ren_set_ass_size_cb(Kit_SubtitleRenderer *ren, int w, int h) {
     Kit_ASSSubtitleRenderer *ass_ren = ren->userdata;
     ass_set_frame_size(ass_ren->renderer, w, h);
@@ -218,6 +261,7 @@ Kit_SubtitleRenderer* Kit_CreateASSSubtitleRenderer(Kit_Decoder *dec, int video_
     ren->ren_render = ren_render_ass_cb;
     ren->ren_close = ren_close_ass_cb;
     ren->ren_get_data = ren_get_ass_data_cb;
+    ren->ren_get_data_raw = ren_get_ass_data_raw_cb;
     ren->ren_set_size = ren_set_ass_size_cb;
     ren->userdata = ass_ren;
     return ren;

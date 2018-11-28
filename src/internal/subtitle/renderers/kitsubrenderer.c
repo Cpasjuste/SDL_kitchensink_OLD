@@ -32,6 +32,14 @@ int Kit_GetSubtitleRendererData(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atl
     return 0;
 }
 
+int Kit_GetSubtitleRendererDataRaw(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atlas, void *data, double current_pts) {
+    if(ren == NULL)
+        return 0;
+    if(ren->ren_get_data_raw != NULL)
+        return ren->ren_get_data_raw(ren, atlas, data, current_pts);
+    return 0;
+}
+
 void Kit_SetSubtitleRendererSize(Kit_SubtitleRenderer *ren, int w, int h) {
     if(ren == NULL)
         return;

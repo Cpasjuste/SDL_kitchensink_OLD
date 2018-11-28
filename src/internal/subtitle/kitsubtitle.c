@@ -185,7 +185,15 @@ void Kit_GetSubtitleDecoderTexture(Kit_Decoder *dec, SDL_Texture *texture, doubl
     Kit_GetSubtitleRendererData(subtitle_dec->renderer, subtitle_dec->atlas, texture, sync_ts);
 }
 
-int Kit_GetSubtitleDecoderInfo(Kit_Decoder *dec, SDL_Texture *texture, SDL_Rect *sources, SDL_Rect *targets, int limit) {
+void Kit_GetSubtitleDecoderTextureRaw(Kit_Decoder *dec, void *data, double sync_ts) {
+    assert(dec != NULL);
+    assert(data != NULL);
+
+    Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
+    Kit_GetSubtitleRendererDataRaw(subtitle_dec->renderer, subtitle_dec->atlas, data, sync_ts);
+}
+
+int Kit_GetSubtitleDecoderInfo(Kit_Decoder *dec, SDL_Rect *sources, SDL_Rect *targets, int limit) {
     Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
     return Kit_GetAtlasItems(subtitle_dec->atlas, sources, targets, limit);
 }

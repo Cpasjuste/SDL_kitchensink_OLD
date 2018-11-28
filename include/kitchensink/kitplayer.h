@@ -228,6 +228,12 @@ KIT_API int Kit_GetPlayerSubtitleData(Kit_Player *player,
                                       SDL_Rect *targets,
                                       int limit);
 
+KIT_API int Kit_GetPlayerSubtitleDataRaw(Kit_Player *player,
+                                      void *data,
+                                      SDL_Rect *sources,
+                                      SDL_Rect *targets,
+                                      int limit);
+
 /**
  * @brief Fetches audio data from the player
  * 

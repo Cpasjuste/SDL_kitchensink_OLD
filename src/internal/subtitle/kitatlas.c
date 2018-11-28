@@ -80,7 +80,7 @@ int Kit_FindFreeAtlasSlot(Kit_TextureAtlas *atlas, SDL_Surface *surface, Kit_Tex
     int best_shelf_idx = -1;
     int best_shelf_h = atlas->h;
     int best_shelf_y = 0;
-    
+
     // Try to find a good shelf to put this item in
     int shelf_idx;
     for(shelf_idx = 0; shelf_idx < atlas->max_shelves; shelf_idx++) {
@@ -180,6 +180,47 @@ int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, SDL_Surface 
 
     // And update texture with the surface
     SDL_UpdateTexture(texture, &item.source, surface->pixels, surface->pitch);
+
+    // Room found, add item to the atlas
+    memcpy(&atlas->items[atlas->cur_items++], &item, sizeof(Kit_TextureAtlasItem));
+    return 0;
+}
+
+int Kit_AddAtlasItemRaw(Kit_TextureAtlas *atlas, void *data, SDL_Surface *surface, const SDL_Rect *target) {
+    assert(atlas != NULL);
+    assert(surface != NULL);
+    assert(target != NULL);
+
+    // Make sure there is still room
+    if(atlas->cur_items >= atlas->max_items)
+        return -1;
+
+    // Create a new item
+    Kit_TextureAtlasItem item;
+    memset(&item, 0, sizeof(Kit_TextureAtlasItem));
+    memcpy(&item.target, target, sizeof(SDL_Rect));
+    item.cur_shelf = -1;
+    item.cur_slot = -1;
+
+    // Allocate space for the new item
+    if(Kit_FindFreeAtlasSlot(atlas, surface, &item) != 0) {
+        return -1;
+    }
+
+    // And update texture with the surface
+    //SDL_UpdateTexture(texture, &item.source, surface->pixels, surface->pitch);
+    int bpp = 4;
+
+    int src_pitch = surface->pitch;
+    unsigned char *src = surface->pixels;
+
+    int dst_pitch = 1024 * 4;
+    unsigned char *dst = (unsigned char*) (data + item.source.y * dst_pitch + item.source.x * bpp);
+    for (int i = 0; i < item.source.h; ++i) {
+        memcpy(dst, src, (size_t) (item.source.w * 4));
+        src += src_pitch;
+        dst += dst_pitch;
+    }
 
     // Room found, add item to the atlas
     memcpy(&atlas->items[atlas->cur_items++], &item, sizeof(Kit_TextureAtlasItem));
