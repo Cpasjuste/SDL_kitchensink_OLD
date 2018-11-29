@@ -208,16 +208,14 @@ int Kit_AddAtlasItemRaw(Kit_TextureAtlas *atlas, void *data, SDL_Surface *surfac
     }
 
     // And update texture with the surface
-    //SDL_UpdateTexture(texture, &item.source, surface->pixels, surface->pitch);
     int bpp = 4;
-
-    int src_pitch = surface->pitch;
     unsigned char *src = surface->pixels;
+    int src_pitch = surface->pitch;
 
     int dst_pitch = 1024 * 4;
     unsigned char *dst = (unsigned char*) (data + item.source.y * dst_pitch + item.source.x * bpp);
     for (int i = 0; i < item.source.h; ++i) {
-        memcpy(dst, src, (size_t) (item.source.w * 4));
+        memcpy(dst, src, (size_t) item.source.w * 4);
         src += src_pitch;
         dst += dst_pitch;
     }
