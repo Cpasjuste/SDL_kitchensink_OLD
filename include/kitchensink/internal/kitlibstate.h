@@ -13,6 +13,9 @@ typedef struct Kit_LibraryState {
     unsigned int subtitle_buf_frames;
     ASS_Library *libass_handle;
     void *ass_so_handle;
+#ifdef __PPLAY__
+    char subtitle_font_path[512];
+#endif
 } Kit_LibraryState;
 
 KIT_LOCAL Kit_LibraryState* Kit_GetLibraryState();

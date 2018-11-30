@@ -230,12 +230,26 @@ Kit_SubtitleRenderer* Kit_CreateASSSubtitleRenderer(Kit_Decoder *dec, int video_
         }
     }
 
+#ifdef __PPLAY__
+    if(strlen(state->subtitle_font_path) > 0) {
+        ass_set_fonts(
+                ass_renderer,
+                "data/LiberationSans-Regular.ttf", "sans-serif",
+                ASS_FONTPROVIDER_NONE, NULL, 0);
+    } else {
+        ass_set_fonts(
+                ass_renderer,
+                NULL, "sans-serif",
+                ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
+    }
+#else
     // Init libass fonts and window frame size
     ass_set_fonts(
         ass_renderer,
         NULL, "sans-serif",
         ASS_FONTPROVIDER_AUTODETECT,
         NULL, 1);
+#endif
     ass_set_storage_size(ass_renderer, video_w, video_h);
     ass_set_frame_size(ass_renderer, screen_w, screen_h);
     ass_set_hinting(ass_renderer, state->font_hinting);
