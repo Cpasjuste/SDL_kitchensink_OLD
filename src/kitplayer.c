@@ -531,6 +531,15 @@ int Kit_SetPlayerStream(Kit_Player *player, const Kit_StreamType type, int index
             break;
         case KIT_STREAMTYPE_SUBTITLE:
             dec = player->decoders[KIT_SUBTITLE_DEC];
+#ifdef __PPLAY__
+            if(dec) {
+                if(dec->format_ctx->streams[dec->stream_index]->codecpar->codec_type ==
+                    dec->format_ctx->streams[index]->codecpar->codec_type) {
+                    dec->stream_index = index;
+                    return 0;
+                }
+            }
+#endif
             break;
         default:
             dec = NULL;
