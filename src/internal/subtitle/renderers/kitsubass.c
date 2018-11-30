@@ -12,6 +12,8 @@
 #include "kitchensink/internal/utils/kithelpers.h"
 #include "kitchensink/internal/subtitle/renderers/kitsubass.h"
 
+extern int Kit_FindFreeAtlasSlot(Kit_TextureAtlas *atlas, SDL_Surface *surface, Kit_TextureAtlasItem *item);
+
 typedef struct Kit_ASSSubtitleRenderer {
     ASS_Renderer *renderer;
     ASS_Track *track;
@@ -38,6 +40,30 @@ static void Kit_ProcessAssImage(SDL_Surface *surface, const ASS_Image *img) {
         }
         src += img->stride;
         dst += surface->pitch;
+    }
+}
+
+static void Kit_ProcessAssImageRaw(void *dst_data, int dst_pitch, const ASS_Image *img) {
+    unsigned char r = ((img->color) >> 24) & 0xFF;
+    unsigned char g = ((img->color) >> 16) & 0xFF;
+    unsigned char b = ((img->color) >>  8) & 0xFF;
+    unsigned char a = 0xFF - ((img->color) & 0xFF);
+    unsigned char *src = img->bitmap;
+    unsigned char *dst = dst_data;
+    unsigned int x;
+    unsigned int y;
+    unsigned int rx;
+
+    for(y = 0; y < img->h; y++) {
+        for(x = 0; x < img->w; x++) {
+            rx = x * 4;
+            dst[rx + 0] = r;
+            dst[rx + 1] = g;
+            dst[rx + 2] = b;
+            dst[rx + 3] = (a * src[x]) >> 8;
+        }
+        src += img->stride;
+        dst += dst_pitch;
     }
 }
 
@@ -126,7 +152,6 @@ static int ren_get_ass_data_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atla
 
 static int ren_get_ass_data_raw_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *atlas, void *data, double current_pts) {
     Kit_ASSSubtitleRenderer *ass_ren = ren->userdata;
-    SDL_Surface *dst = NULL;
     ASS_Image *src = NULL;
     int change = 0;
     long long now = current_pts * 1000;
@@ -143,21 +168,22 @@ static int ren_get_ass_data_raw_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *
 
         // There was some change, process images and add them to atlas
         Kit_ClearAtlasContent(atlas);
-        //Kit_CheckAtlasTextureSize(atlas, texture);
         atlas->w = 1024;
         atlas->h = 1024;
         for(; src; src = src->next) {
             if(src->w == 0 || src->h == 0)
                 continue;
-            dst = SDL_CreateRGBSurfaceWithFormat(0, src->w, src->h, 32, SDL_PIXELFORMAT_RGBA32);
-            Kit_ProcessAssImage(dst, src);
-            SDL_Rect target;
-            target.x = src->dst_x;
-            target.y = src->dst_y;
-            target.w = dst->w;
-            target.h = dst->h;
-            Kit_AddAtlasItemRaw(atlas, data, dst, &target);
-            SDL_FreeSurface(dst);
+
+            SDL_Rect target = {src->dst_x, src->dst_y, src->w, src->h};
+            SDL_Surface surface;
+            surface.w = src->w;
+            surface.h = src->h;
+
+            Kit_TextureAtlasItem *item = Kit_AddAtlasItemRaw(atlas, &surface, &target);
+            if(item) {
+                unsigned char *dst_data = (unsigned char *) (data + item->source.y * (1024 * 4) + item->source.x * 4);
+                Kit_ProcessAssImageRaw(dst_data, 1024 * 4, src);
+            }
         }
 
         Kit_UnlockDecoderOutput(ren->dec);

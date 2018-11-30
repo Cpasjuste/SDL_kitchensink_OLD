@@ -186,14 +186,15 @@ int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, SDL_Surface 
     return 0;
 }
 
-int Kit_AddAtlasItemRaw(Kit_TextureAtlas *atlas, void *data, SDL_Surface *surface, const SDL_Rect *target) {
+Kit_TextureAtlasItem *Kit_AddAtlasItemRaw(Kit_TextureAtlas *atlas, SDL_Surface *surface, const SDL_Rect *target) {
+
     assert(atlas != NULL);
     assert(surface != NULL);
     assert(target != NULL);
 
     // Make sure there is still room
     if(atlas->cur_items >= atlas->max_items)
-        return -1;
+        return NULL;
 
     // Create a new item
     Kit_TextureAtlasItem item;
@@ -204,23 +205,11 @@ int Kit_AddAtlasItemRaw(Kit_TextureAtlas *atlas, void *data, SDL_Surface *surfac
 
     // Allocate space for the new item
     if(Kit_FindFreeAtlasSlot(atlas, surface, &item) != 0) {
-        return -1;
-    }
-
-    // And update texture with the surface
-    int bpp = 4;
-    unsigned char *src = surface->pixels;
-    int src_pitch = surface->pitch;
-
-    int dst_pitch = 1024 * 4;
-    unsigned char *dst = (unsigned char*) (data + item.source.y * dst_pitch + item.source.x * bpp);
-    for (int i = 0; i < item.source.h; ++i) {
-        memcpy(dst, src, (size_t) item.source.w * 4);
-        src += src_pitch;
-        dst += dst_pitch;
+        return NULL;
     }
 
     // Room found, add item to the atlas
     memcpy(&atlas->items[atlas->cur_items++], &item, sizeof(Kit_TextureAtlasItem));
-    return 0;
+
+    return &atlas->items[atlas->cur_items - 1];
 }
