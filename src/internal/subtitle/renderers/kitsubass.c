@@ -260,7 +260,7 @@ Kit_SubtitleRenderer* Kit_CreateASSSubtitleRenderer(Kit_Decoder *dec, int video_
     if(strlen(state->subtitle_font_path) > 0) {
         ass_set_fonts(
                 ass_renderer,
-                "data/LiberationSans-Regular.ttf", "sans-serif",
+                state->subtitle_font_path, "sans-serif",
                 ASS_FONTPROVIDER_NONE, NULL, 0);
     } else {
         ass_set_fonts(
