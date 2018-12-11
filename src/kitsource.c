@@ -32,8 +32,9 @@ Kit_Source* Kit_CreateSourceFromUrl(const char *url) {
     }
 
     // Attempt to open source
-    if(avformat_open_input((AVFormatContext **)&src->format_ctx, url, NULL, NULL) < 0) {
-        Kit_SetError("Unable to open source Url");
+    int res = avformat_open_input((AVFormatContext **)&src->format_ctx, url, NULL, NULL);
+    if(res < 0) {
+        Kit_SetError(av_err2str(res));
         goto exit_0;
     }
 
