@@ -285,7 +285,11 @@ KIT_API Kit_PlayerState Kit_GetPlayerState(const Kit_Player *player);
  * 
  * @param player Player instance
  */
+#ifdef __PPLAY__
+KIT_API int Kit_PlayerPlay(Kit_Player *player);
+#else
 KIT_API void Kit_PlayerPlay(Kit_Player *player);
+#endif
 
 /**
  * @brief Stops playback

@@ -76,13 +76,48 @@ static int _RunDecoder(Kit_Player *player) {
     bool has_room = true;
 
     do {
-        while((got = _DemuxStream(player)) == -1);
+        while((got = _DemuxStream(player)) == -1) {
+#if 0
+            Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
+            Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
+            printf("_DemuxStream(player): %i || video_buf: in = %i/%i, out: %i/%i - ", got,
+                    Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
+                    Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
+            printf("audio_buf: in = %i/%i, out: %i/%i\n",
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
+#endif
+        }
         if(got == 1 && _IsOutputEmpty(player)) {
+#if 0
+            Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
+            Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
+            printf("_DemuxStream(player): %i || video_buf: in = %i/%i, out: %i/%i - ", got,
+                   Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
+            printf("audio_buf: in = %i/%i, out: %i/%i\n",
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
+#endif
             return 1;
         }
 
         for(int i = 0; i < KIT_DEC_COUNT; i++) {
-            while(Kit_RunDecoder(player->decoders[i]) == 1);
+            while(Kit_RunDecoder(player->decoders[i]) == 1) {
+#if 0
+                if(i == KIT_VIDEO_DEC) {
+                    Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
+                    printf("Kit_RunDecoder(player): video_buf: in = %i/%i, out: %i/%i\n",
+                           Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
+                           Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
+                } else if(i == KIT_AUDIO_DEC) {
+                    Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
+                    printf("Kit_RunDecoder(player): audio_buf: in = %i/%i, out: %i/%i\n",
+                           Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
+                           Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
+                }
+#endif
+            }
         }
 
         // If there is no room in any decoder input, just stop here since it likely means that
@@ -100,6 +135,71 @@ static int _RunDecoder(Kit_Player *player) {
 
     return 0;
 }
+
+#ifdef __PPLAY__
+static int _RunDecoderFromMainThread(Kit_Player *player) {
+    int got;
+
+        if((got = _DemuxStream(player)) == -1) {
+#if 0
+            Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
+            Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
+            printf("_DemuxStream(player): %i || video_buf: in = %i/%i, out: %i/%i - ", got,
+                   Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
+            printf("audio_buf: in = %i/%i, out: %i/%i\n",
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
+#endif
+            return 1;
+        }
+        if(got == 1 && _IsOutputEmpty(player)) {
+#if 0
+            Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
+            Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
+            printf("_DemuxStream(player): %i || video_buf: in = %i/%i, out: %i/%i - ", got,
+                   Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
+            printf("audio_buf: in = %i/%i, out: %i/%i\n",
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
+                   Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
+#endif
+            return 1;
+        }
+
+        for(int i = 0; i < KIT_DEC_COUNT; i++) {
+            if(Kit_RunDecoder(player->decoders[i]) == 1) {
+#if 0
+                if(i == KIT_VIDEO_DEC) {
+                    Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
+                    printf("Kit_RunDecoder(player): video_buf: in = %i/%i, out: %i/%i\n",
+                           Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
+                           Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
+                } else if(i == KIT_AUDIO_DEC) {
+                    Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
+                    printf("Kit_RunDecoder(player): audio_buf: in = %i/%i, out: %i/%i\n",
+                           Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
+                           Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
+                }
+#endif
+                return 1;
+            }
+        }
+
+        // If there is no room in any decoder input, just stop here since it likely means that
+        // at least some decoder output is full.
+        for(int i = 0; i < KIT_DEC_COUNT; i++) {
+            Kit_Decoder *dec = player->decoders[i];
+            if(dec == NULL)
+                continue;
+            if(!Kit_CanWriteDecoderInput(dec) || got == 1) {
+                return 0;
+            }
+        }
+
+    return 1;
+}
+#endif
 
 static int _DecoderThread(void *ptr) {
     Kit_Player *player = ptr;
@@ -134,8 +234,10 @@ end_block:
                 SDL_UnlockMutex(player->dec_lock);
             }
 
+#ifndef __SWITCH__ // preemptive threading on switch
             // Delay to make sure this thread does not hog all cpu
             SDL_Delay(2);
+#endif
         }
 
         // Just idle while waiting for work.
@@ -409,8 +511,9 @@ Kit_PlayerState Kit_GetPlayerState(const Kit_Player *player) {
     return player->state;
 }
 
-void Kit_PlayerPlay(Kit_Player *player) {
+int Kit_PlayerPlay(Kit_Player *player) {
     assert(player != NULL);
+    int ret = 1;
     double tmp;
     if(SDL_LockMutex(player->dec_lock) == 0) {
         switch(player->state) {
@@ -423,13 +526,17 @@ void Kit_PlayerPlay(Kit_Player *player) {
                 player->state = KIT_PLAYING;
                 break;
             case KIT_STOPPED:
-                _RunDecoder(player); // Fill some buffers before starting playback
-                _SetClockSync(player);
-                player->state = KIT_PLAYING;
+                ret = _RunDecoderFromMainThread(player); // Fill some buffers before starting playback
+                if(ret == 0) {
+                    _SetClockSync(player);
+                    player->state = KIT_PLAYING;
+                }
                 break;
         }
         SDL_UnlockMutex(player->dec_lock);
     }
+
+    return ret;
 }
 
 void Kit_PlayerStop(Kit_Player *player) {
