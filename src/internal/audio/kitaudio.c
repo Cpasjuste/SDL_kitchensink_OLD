@@ -76,6 +76,9 @@ int _FindBytes(enum AVSampleFormat fmt) {
 }
 
 int _FindSDLSampleFormat(enum AVSampleFormat fmt) {
+#ifdef __PPLAY__
+    return AUDIO_S16SYS;
+#else
     switch(fmt) {
         case AV_SAMPLE_FMT_U8P:
         case AV_SAMPLE_FMT_U8:
@@ -86,6 +89,7 @@ int _FindSDLSampleFormat(enum AVSampleFormat fmt) {
         default:
             return AUDIO_S16SYS;
     }
+#endif
 }
 
 int _FindSignedness(enum AVSampleFormat fmt) {
