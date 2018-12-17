@@ -256,7 +256,7 @@ Kit_Player* Kit_CreatePlayer(const Kit_Source *src,
     assert(src != NULL);
     assert(screen_w >= 0);
     assert(screen_h >= 0);
-    
+
     if(video_stream_index < 0 && subtitle_stream_index >= 0) {
         Kit_SetError("Subtitle stream selected without video stream");
         goto exit_0;
@@ -638,20 +638,18 @@ int Kit_SetPlayerStream(Kit_Player *player, const Kit_StreamType type, int index
             break;
         case KIT_STREAMTYPE_SUBTITLE:
             dec = player->decoders[KIT_SUBTITLE_DEC];
-#ifdef __PPLAY__
-            if(dec) {
-                if(dec->format_ctx->streams[dec->stream_index]->codecpar->codec_type ==
-                    dec->format_ctx->streams[index]->codecpar->codec_type) {
-                    dec->stream_index = index;
-                    return 0;
-                }
-            }
-#endif
             break;
         default:
             dec = NULL;
     }
     if(dec != NULL) {
+#ifdef __PPLAY__
+        if(dec->format_ctx->streams[dec->stream_index]->codecpar->codec_type ==
+            dec->format_ctx->streams[index]->codecpar->codec_type) {
+            dec->stream_index = index;
+            return 0;
+        }
+#endif
         return Kit_ReInitDecoder(dec, index);
     }
     return -1;
