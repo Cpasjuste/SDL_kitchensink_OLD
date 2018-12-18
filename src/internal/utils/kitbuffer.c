@@ -22,6 +22,16 @@ unsigned int Kit_GetBufferLength(const Kit_Buffer *buffer) {
     return buffer->write_p - buffer->read_p;
 }
 
+unsigned int Kit_GetBufferSize(const Kit_Buffer *buffer) {
+    return buffer->size;
+}
+
+int Kit_GetBufferBufferedSize(const Kit_Buffer *buffer) {
+    float total = Kit_GetBufferSize(buffer);
+    float current = Kit_GetBufferLength(buffer);
+    return (int) ((current / total) * 100.0f);
+}
+
 void Kit_DestroyBuffer(Kit_Buffer *buffer) {
     if(buffer == NULL) return;
     Kit_ClearBuffer(buffer);
@@ -31,8 +41,9 @@ void Kit_DestroyBuffer(Kit_Buffer *buffer) {
 
 void Kit_ClearBuffer(Kit_Buffer *buffer) {
     void *data;
-    if(buffer->free_cb == NULL)
+    if(buffer->free_cb == NULL) {
         return;
+    }
     while((data = Kit_ReadBuffer(buffer)) != NULL) {
         buffer->free_cb(data);
     }

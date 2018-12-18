@@ -287,6 +287,7 @@ KIT_API Kit_PlayerState Kit_GetPlayerState(const Kit_Player *player);
  */
 #ifdef __PPLAY__
 KIT_API int Kit_PlayerPlay(Kit_Player *player);
+KIT_API void Kit_SetClockSync(Kit_Player *player);
 #else
 KIT_API void Kit_PlayerPlay(Kit_Player *player);
 #endif
@@ -369,6 +370,10 @@ KIT_API double Kit_GetPlayerDuration(const Kit_Player *player);
  * @return Position
  */
 KIT_API double Kit_GetPlayerPosition(const Kit_Player *player);
+
+/// PPLAY
+int Kit_PlayerSeekStart(Kit_Player *player, double position, double seek_set);
+int Kit_PlayerSeekEnd(Kit_Player *player, double position, double seek_set);
 
 #ifdef __cplusplus
 }
