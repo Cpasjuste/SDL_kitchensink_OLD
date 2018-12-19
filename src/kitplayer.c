@@ -32,8 +32,9 @@ static int _DemuxStream(const Kit_Player *player) {
         Kit_Decoder *dec = player->decoders[i];
         if (dec == NULL)
             continue;
-        if (!Kit_CanWriteDecoderInput(dec))
+        if (!Kit_CanWriteDecoderInput(dec)) {
             return 0;
+        }
     }
 
     // Attempt to read frame. Just return here if it fails.
@@ -142,7 +143,6 @@ static int _RunDecoderFromMainThread(Kit_Player *player) {
     int got;
 
     if ((got = _DemuxStream(player)) == -1) {
-        printf("_DemuxStream: -1\n");
 #if 0
         Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
         Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
@@ -156,7 +156,6 @@ static int _RunDecoderFromMainThread(Kit_Player *player) {
         return 1;
     }
     if (got == 1 && _IsOutputEmpty(player)) {
-        printf("got == 1 && _IsOutputEmpty\n");
 #if 0
         Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
         Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
@@ -172,14 +171,13 @@ static int _RunDecoderFromMainThread(Kit_Player *player) {
 
     for (int i = 0; i < KIT_DEC_COUNT; i++) {
         if (Kit_RunDecoder(player->decoders[i]) == 1) {
-            printf("Kit_RunDecoder(player->decoders[i]) == 1\n");
 #if 0
-            if(i == KIT_VIDEO_DEC) {
+            if (i == KIT_VIDEO_DEC) {
                 Kit_Decoder *dec_vid = (Kit_Decoder *) player->decoders[KIT_VIDEO_DEC];
                 printf("Kit_RunDecoder(player): video_buf: in = %i/%i, out: %i/%i\n",
                        Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_IN]), dec_vid->buffer[KIT_DEC_BUF_IN]->size,
                        Kit_GetBufferLength(dec_vid->buffer[KIT_DEC_BUF_OUT]), dec_vid->buffer[KIT_DEC_BUF_OUT]->size);
-            } else if(i == KIT_AUDIO_DEC) {
+            } else if (i == KIT_AUDIO_DEC) {
                 Kit_Decoder *dec_aud = (Kit_Decoder *) player->decoders[KIT_AUDIO_DEC];
                 printf("Kit_RunDecoder(player): audio_buf: in = %i/%i, out: %i/%i\n",
                        Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
@@ -197,9 +195,6 @@ static int _RunDecoderFromMainThread(Kit_Player *player) {
         if (dec == NULL)
             continue;
         if (!Kit_CanWriteDecoderInput(dec) || got == 1) {
-            // TODO: why do we end here when seeking ?!
-#error
-            printf("Kit_CanWriteDecoderInput(dec) = %i || got = %i\n", Kit_CanWriteDecoderInput(dec), got);
             return 0;
         }
     }
@@ -581,6 +576,7 @@ int Kit_PlayerSeekStart(Kit_Player *player, double position, double seek_set) {
     int flags = AVSEEK_FLAG_ANY;
 
     if (SDL_LockMutex(player->dec_lock) == 0) {
+
         duration = Kit_GetPlayerDuration(player);
         if (seek_set <= 0) {
             seek_set = 0;
@@ -608,41 +604,38 @@ int Kit_PlayerSeekStart(Kit_Player *player, double position, double seek_set) {
             Kit_ClearDecoderBuffers(player->decoders[i]);
         }
 
-        SDL_UnlockMutex(player->dec_lock);
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 
 int Kit_PlayerSeekEnd(Kit_Player *player, double position, double seek_set) {
 
-    int ret = 1;
+    int ret = _RunDecoderFromMainThread(player); // Fill some buffers before starting playback
+    if (ret == 0) {
+        double duration = Kit_GetPlayerDuration(player);
+        if (seek_set <= 0) {
+            seek_set = 0;
+        }
+        if (seek_set >= duration) {
+            seek_set = duration;
+        }
+        // Try to get a precise seek position from the next audio/video frame
+        // (depending on which one is used to sync)
+        double precise_pts = -1.0F;
+        if (player->decoders[KIT_VIDEO_DEC] != NULL) {
+            precise_pts = Kit_GetVideoDecoderPTS(player->decoders[KIT_VIDEO_DEC]);
+        } else if (player->decoders[KIT_AUDIO_DEC] != NULL) {
+            precise_pts = Kit_GetAudioDecoderPTS(player->decoders[KIT_AUDIO_DEC]);
+        }
 
-    if (SDL_LockMutex(player->dec_lock) == 0) {
-        ret = _RunDecoderFromMainThread(player); // Fill some buffers before starting playback
-        if (ret == 0) {
-            if (seek_set <= 0) {
-                seek_set = 0;
-            }
-            if (seek_set >= Kit_GetPlayerDuration(player)) {
-                seek_set = Kit_GetPlayerDuration(player);
-            }
-            // Try to get a precise seek position from the next audio/video frame
-            // (depending on which one is used to sync)
-            double precise_pts = -1.0F;
-            if (player->decoders[KIT_VIDEO_DEC] != NULL) {
-                precise_pts = Kit_GetVideoDecoderPTS(player->decoders[KIT_VIDEO_DEC]);
-            } else if (player->decoders[KIT_AUDIO_DEC] != NULL) {
-                precise_pts = Kit_GetAudioDecoderPTS(player->decoders[KIT_AUDIO_DEC]);
-            }
-
-            // If we got a legit looking value, set it as seek value. Otherwise use
-            // the seek value we requested.
-            if (precise_pts >= 0) {
-                _ChangeClockSync(player, position - precise_pts);
-            } else {
-                _ChangeClockSync(player, position - seek_set);
-            }
+        // If we got a legit looking value, set it as seek value. Otherwise use
+        // the seek value we requested.
+        if (precise_pts >= 0) {
+            _ChangeClockSync(player, position - precise_pts);
+        } else {
+            _ChangeClockSync(player, position - seek_set);
         }
 
         SDL_UnlockMutex(player->dec_lock);
