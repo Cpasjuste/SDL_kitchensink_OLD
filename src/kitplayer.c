@@ -166,7 +166,7 @@ static int _RunDecoderFromMainThread(Kit_Player *player) {
                Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_IN]), dec_aud->buffer[KIT_DEC_BUF_IN]->size,
                Kit_GetBufferLength(dec_aud->buffer[KIT_DEC_BUF_OUT]), dec_aud->buffer[KIT_DEC_BUF_OUT]->size);
 #endif
-        return 1;
+        return 0;
     }
 
     for (int i = 0; i < KIT_DEC_COUNT; i++) {
@@ -571,13 +571,12 @@ void Kit_PlayerPause(Kit_Player *player) {
 int Kit_PlayerSeekStart(Kit_Player *player, double position, double seek_set) {
 
     assert(player != NULL);
-    double duration;
     int64_t seek_target;
     int flags = AVSEEK_FLAG_ANY;
 
     if (SDL_LockMutex(player->dec_lock) == 0) {
 
-        duration = Kit_GetPlayerDuration(player);
+        double duration = Kit_GetPlayerDuration(player);
         if (seek_set <= 0) {
             seek_set = 0;
         }
