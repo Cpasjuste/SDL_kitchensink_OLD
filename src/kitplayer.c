@@ -289,7 +289,8 @@ Kit_Player *Kit_CreatePlayer(const Kit_Source *src,
     player->decoders[KIT_SUBTITLE_DEC] = Kit_CreateSubtitleDecoder(
             src, subtitle_stream_index, output.width, output.height, screen_w, screen_h);
     if (player->decoders[KIT_SUBTITLE_DEC] == NULL && subtitle_stream_index >= 0) {
-        goto exit_2;
+        //goto exit_2;
+        printf("Kit_CreatePlayer: could not create subtitle decoder\n");
     }
 
     // Decoder thread lock
