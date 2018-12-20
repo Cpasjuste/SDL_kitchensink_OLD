@@ -332,9 +332,26 @@ Kit_Decoder* Kit_CreateAudioDecoder(const Kit_Source *src, int stream_index) {
         dec->codec_ctx->sample_rate, // Source samplerate
         0, NULL);
 
-    if(swr_init(audio_dec->swr) != 0) {
-        Kit_SetError("Unable to initialize audio resampler context");
-        goto exit_3;
+    int res = swr_init(audio_dec->swr);
+    if(res != 0) {
+        // fix pcm_s16* audio
+        swr_free(&audio_dec->swr);
+        audio_dec->swr = swr_alloc_set_opts(
+                NULL,
+                _FindAVChannelLayout(output.channels), // Target channel layout
+                _FindAVSampleFormat(output.format), // Target fmt
+                output.samplerate, // Target samplerate
+                _FindAVChannelLayout(output.channels), // Source channel layout
+                dec->codec_ctx->sample_fmt, // Source fmt
+                dec->codec_ctx->sample_rate, // Source samplerate
+                0, NULL);
+
+        res = swr_init(audio_dec->swr);
+        if(res != 0) {
+            swr_free(&audio_dec->swr);
+            Kit_SetError("Unable to initialize audio resampler: %s\n", av_err2str(res));
+            goto exit_3;
+        }
     }
 
     // Set callbacks and userdata, and we're go
