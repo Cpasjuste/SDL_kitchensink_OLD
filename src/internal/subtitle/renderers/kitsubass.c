@@ -168,8 +168,8 @@ static int ren_get_ass_data_raw_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *
 
         // There was some change, process images and add them to atlas
         Kit_ClearAtlasContent(atlas);
-        atlas->w = 1024;
-        atlas->h = 1024;
+        atlas->w = 2048;
+        atlas->h = 2048;
         for(; src; src = src->next) {
             if(src->w == 0 || src->h == 0)
                 continue;
@@ -181,8 +181,8 @@ static int ren_get_ass_data_raw_cb(Kit_SubtitleRenderer *ren, Kit_TextureAtlas *
 
             Kit_TextureAtlasItem *item = Kit_AddAtlasItemRaw(atlas, &surface, &target);
             if(item) {
-                unsigned char *dst_data = (unsigned char *) (data + item->source.y * (1024 * 4) + item->source.x * 4);
-                Kit_ProcessAssImageRaw(dst_data, 1024 * 4, src);
+                unsigned char *dst_data = (unsigned char *) (data + item->source.y * (2048 * 4) + item->source.x * 4);
+                Kit_ProcessAssImageRaw(dst_data, 2048 * 4, src);
             }
         }
 
