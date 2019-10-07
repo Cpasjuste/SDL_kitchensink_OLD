@@ -4,6 +4,9 @@
 #include "kitchensink/internal/utils/kithelpers.h"
 
 static const char * const font_mime[] = {
+    "font/ttf",
+    "font/otf",
+    "font/sfnt",
     "application/x-font-ttf",
     "application/x-font-truetype",
     "application/x-truetype-font",
